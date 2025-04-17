@@ -1,19 +1,22 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from models import Movie
-from schemas import FilmCreate, FilmUpdate
+from models import Movie, User
+from schemas import FilmCreate, FilmUpdate, UserCreate, UserRead
 from database import get_db
+from security import hash_password, decode_token
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-async def get_movies(db: AsyncSession = Depends(get_db)):
+async def get_movies_db(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Movie))
     movies = result.scalars().all()
 
     return movies
 
 
-async def create_movie(movie: FilmCreate, db: AsyncSession = Depends(get_db)):
+async def create_movie_db(movie: FilmCreate, db: AsyncSession = Depends(get_db)):
     new_movie = Movie(**movie.model_dump())
 
     db.add(new_movie)
@@ -24,13 +27,13 @@ async def create_movie(movie: FilmCreate, db: AsyncSession = Depends(get_db)):
     return new_movie
 
 
-async def get_movie_by_id(movie_id: int, db: AsyncSession = Depends(get_db)):
+async def get_movie_by_id_db(movie_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Movie).where(Movie.id == movie_id))
 
     return result.scalar_one_or_none()
 
 
-async def delete_movie_by_id(movie_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_movie_by_id_db(movie_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Movie).where(Movie.id == movie_id))
     movie = result.scalar_one_or_none()
 
@@ -43,7 +46,7 @@ async def delete_movie_by_id(movie_id: int, db: AsyncSession = Depends(get_db)):
     return movie
 
 
-async def update_movie_by_id(movie_id: int, db: AsyncSession, movie: FilmUpdate):
+async def update_movie_by_id_db(movie_id: int, db: AsyncSession, movie: FilmUpdate):
     result = await db.execute(select(Movie).where(Movie.id == movie_id))
     db_movie = result.scalar_one_or_none()
 
@@ -58,3 +61,23 @@ async def update_movie_by_id(movie_id: int, db: AsyncSession, movie: FilmUpdate)
     await db.refresh(db_movie)
 
     return db_movie
+
+
+async def create_user_db(db: AsyncSession, user: UserCreate):
+    hashed_pwd = hash_password(user.password)
+
+    db_user = User(email=user.email, hashed_password=hashed_pwd)
+
+    db.add(db_user)
+
+    await db.commit()
+    await db.refresh(db_user)
+
+    return db_user
+
+
+async def get_user_by_email_db(email: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.email == email))
+
+    return result.scalar_one_or_none()
+
