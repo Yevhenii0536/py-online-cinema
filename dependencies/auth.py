@@ -1,32 +1,36 @@
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from database import get_db
+from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
+from database import get_db
+from crud.user import get_user_by_email_db
+from security import SECRET_KEY, ALGORITHM
 
-from schemas import UserRead
-from security import decode_token
-from fastapi import Depends, HTTPException
-from crud import get_user_by_email_db
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 
 async def get_current_user(
         token: str = Depends(oauth2_scheme),
         db: AsyncSession = Depends(get_db)
-) -> UserRead:
-    payload = decode_token(token)
+):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
 
-    email = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
 
-    if email is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    user = await get_user_by_email_db(email=email, db=db)
 
-    db_user = await get_user_by_email_db(email, db=db)
+    if user is None:
+        raise credentials_exception
 
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return UserRead.model_validate(db_user)
+    return user
