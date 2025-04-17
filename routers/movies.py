@@ -8,7 +8,7 @@ from crud import get_movies, create_movie, get_movie_by_id, delete_movie_by_id, 
 
 
 router = APIRouter()
-# //
+# // s
 @router.get("/movies", response_model=List[FilmRead])
 async def read_movies(db: AsyncSession = Depends(get_db)):
     try:
