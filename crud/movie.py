@@ -2,7 +2,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.movie import Movie
-from schemas import FilmCreate, FilmUpdate
+from schemas.movie import MovieCreate, MovieUpdate
 from database import get_db
 
 
@@ -13,7 +13,7 @@ async def get_movies_db(db: AsyncSession = Depends(get_db)):
     return movies
 
 
-async def create_movie_db(movie: FilmCreate, db: AsyncSession = Depends(get_db)):
+async def create_movie_db(movie: MovieCreate, db: AsyncSession = Depends(get_db)):
     new_movie = Movie(**movie.model_dump())
 
     db.add(new_movie)
@@ -43,7 +43,7 @@ async def delete_movie_by_id_db(movie_id: int, db: AsyncSession = Depends(get_db
     return movie
 
 
-async def update_movie_by_id_db(movie_id: int, db: AsyncSession, movie: FilmUpdate):
+async def update_movie_by_id_db(movie_id: int, db: AsyncSession, movie: MovieUpdate):
     result = await db.execute(select(Movie).where(Movie.id == movie_id))
     db_movie = result.scalar_one_or_none()
 

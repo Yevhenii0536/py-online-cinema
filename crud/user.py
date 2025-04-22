@@ -1,11 +1,13 @@
-from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.user import User
-from schemas import UserCreate
+from schemas.user import UserCreate, UserRead
 from database import get_db
-from security import hash_password
+from security import hash_password, decode_token
+
+security = HTTPBearer()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
@@ -28,3 +30,28 @@ async def get_user_by_email_db(email: str, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
 
     return user
+
+
+async def get_current_user_db(
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncSession = Depends(get_db)
+) -> UserRead:
+    token = credentials.credentials
+    payload = decode_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    email = payload.get("sub")
+    if email is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    db_user = await get_user_by_email_db(db=db, email=email)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return UserRead.from_orm(db_user)
+
+
+async def get_users_db(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User))
+
+    return result.scalars().all()
