@@ -63,3 +63,18 @@ async def require_admin(user: UserRead = Depends(get_current_user_db)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
 
     return user
+
+
+async def make_admin_db(user_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user_db = result.scalar_one_or_none()
+
+    if not user_db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user_db.role = "admin"
+
+    await db.commit()
+    await db.refresh(user_db)
+
+    return { "detail": "Admin privileges granted" }

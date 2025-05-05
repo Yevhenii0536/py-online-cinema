@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from schemas.movie import MovieCreate, MovieRead, MovieUpdate
 from database import get_db
 from crud.user import require_admin
-
 from crud.movie import get_movies_db, create_movie_db, get_movie_by_id_db, delete_movie_by_id_db, update_movie_by_id_db
 
 
