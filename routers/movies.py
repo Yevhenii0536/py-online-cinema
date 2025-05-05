@@ -3,6 +3,7 @@ from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from schemas.movie import MovieCreate, MovieRead, MovieUpdate
 from database import get_db
+from crud.user import require_admin
 
 from crud.movie import get_movies_db, create_movie_db, get_movie_by_id_db, delete_movie_by_id_db, update_movie_by_id_db
 
@@ -44,7 +45,7 @@ async def update_movie(movie_id: int, movie: MovieUpdate, db: AsyncSession = Dep
     return updated_movie
 
 
-@router.delete("/movies/{movie_id}", response_model=MovieRead)
+@router.delete("/movies/{movie_id}", response_model=MovieRead, dependencies=[Depends(require_admin)])
 async def remove_movie(movie_id: int, db: AsyncSession = Depends(get_db)):
     movie = await delete_movie_by_id_db(movie_id=movie_id, db=db)
 

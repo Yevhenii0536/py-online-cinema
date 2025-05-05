@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -9,13 +9,11 @@ from security import hash_password, decode_token
 
 security = HTTPBearer()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
 
 async def create_user_db(db: AsyncSession, user: UserCreate):
     hashed_pwd = hash_password(user.password)
 
-    db_user = User(email=user.email, hashed_password=hashed_pwd)
+    db_user = User(email=user.email, hashed_password=hashed_pwd, role=user.role)
 
     db.add(db_user)
 
@@ -38,20 +36,30 @@ async def get_current_user_db(
 ) -> UserRead:
     token = credentials.credentials
     payload = decode_token(token)
+
     if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
     email = payload.get("sub")
+
     if email is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     db_user = await get_user_by_email_db(db=db, email=email)
     if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    return UserRead.from_orm(db_user)
+    return UserRead.model_validate(db_user)
 
 
 async def get_users_db(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User))
 
     return result.scalars().all()
+
+
+async def require_admin(user: UserRead = Depends(get_current_user_db)):
+    if user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+
+    return user
