@@ -7,7 +7,6 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    role: str = "user"
 
 
 class UserRead(UserBase):

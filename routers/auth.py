@@ -14,7 +14,7 @@ router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-@router.post("/register", response_model=UserRead)
+@router.post("/auth/register", response_model=UserRead)
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     db_user = await get_user_by_email_db(email=user.email, db=db)
 
@@ -23,7 +23,7 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     return await create_user_db(db=db, user=user)
 
 
-@router.post("/login", response_model=Token)
+@router.post("/auth/login", response_model=Token)
 async def login(data: LoginData, db: AsyncSession = Depends(get_db)):
     db_user = await get_user_by_email_db(email=data.email, db=db)
 
@@ -36,7 +36,7 @@ async def login(data: LoginData, db: AsyncSession = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/reset-password")
+@router.post("/auth/reset-password")
 async def reset_password(email: str, new_password: str, db: AsyncSession = Depends(get_db)):
     db_user = await get_user_by_email_db(db=db, email=email)
 

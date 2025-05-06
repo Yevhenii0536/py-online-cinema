@@ -1,5 +1,5 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.user import User
@@ -13,7 +13,7 @@ security = HTTPBearer()
 async def create_user_db(db: AsyncSession, user: UserCreate):
     hashed_pwd = hash_password(user.password)
 
-    db_user = User(email=user.email, hashed_password=hashed_pwd, role=user.role)
+    db_user = User(email=user.email, hashed_password=hashed_pwd, role="user")
 
     db.add(db_user)
 
